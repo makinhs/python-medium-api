@@ -1,23 +1,53 @@
+from database.config import Session
+from .user_entity import User
+import bcrypt
+
+
 def getAllUsers():
-    # Retrieve all users logic
-    return {"message": "Get all users"}
+    session = Session()
+    users = session.query(User).all()
+    return users
 
 
 def getUser(user_id: int):
-    # Retrieve user by ID logic
-    return {"message": f"Get user with ID: {user_id}"}
+    session = Session()
+    user = session.query(User).filter(User.id == user_id).first()
+    return user
 
 
 def createUser(user_data: dict):
-    # Create user logic
-    return {"message": f"Create user {user_data}"}
+    user_data["password"] = bcrypt.hashpw(user_data["password"].encode("utf-8"), bcrypt.gensalt())
+
+    session = Session()
+    user = User(**user_data)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
 
 
 def updateUser(user_id: int, user_data: dict):
-    # Update user by ID logic
-    return {"message": f"Update user with ID: {user_id} {user_data}"}
+    if(user_data["password"]):
+        user_data["password"] = bcrypt.hashpw(user_data["password"].encode("utf-8"), bcrypt.gensalt())
+
+    session = Session()
+    user = session.query(User).filter(User.id == user_id).first()
+    if user:
+        for key, value in user_data.items():
+            setattr(user, key, value)
+        session.commit()
+        session.refresh(user)
+    return user
 
 
 def deleteUser(user_id: int):
-    # Delete user by ID logic
+    session = Session()
+    user = session.query(User).filter(User.id == user_id).first()
+    if user:
+        session.delete(user)
+        session.commit()
     return {"message": f"Delete user with ID: {user_id}"}
+
+
+def verify_password(stored_password: str, provided_password: str) -> bool:
+    return bcrypt.checkpw(provided_password.encode("utf-8"), stored_password.encode("utf-8"))
